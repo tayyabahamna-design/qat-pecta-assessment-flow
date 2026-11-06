@@ -1,0 +1,398 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>QAT and PECTA Assessment Flow</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600&display=swap">
+<style>
+/* Layout: sticky phone prototype on the left, build spec scrolling on the right; stacks on narrow screens. */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#10202f; --muted:#5b6b7b; --line:#dde3ea;
+  --navy:#001F3F; --accent:#e8553f; --accent-fg:#ffffff; --ok:#1f9d55; --warn:#b7791f; --warn-bg:#fdf4e1;
+  --code-bg:#0e1b2a; --code-fg:#d6e4f2;
+  --wa-bg:#0b141a; --wa-in:#202c33; --wa-out:#005c4b; --wa-fg:#e9edef; --wa-mute:#8696a0; --wa-green:#21c063;
+  --flow-bg:#111b21; --flow-card:#1f2c34;
+  --display:'Bricolage Grotesque',system-ui,sans-serif; --body:'IBM Plex Sans',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace; --ur:'Noto Nastaliq Urdu','Noto Naskh Arabic',serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0a1623; --panel:#12233a; --fg:#e8eef5; --muted:#9fb0c2; --line:#25384f;
+  --accent:#ff7a63; --warn:#e6b450; --warn-bg:#2b2412; --code-bg:#07101b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0a1623; --panel:#12233a; --fg:#e8eef5; --muted:#9fb0c2; --line:#25384f;
+  --accent:#ff7a63; --warn:#e6b450; --warn-bg:#2b2412; --code-bg:#07101b; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55;
+  padding-block:28px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1120px;margin:0 auto}
+header.top{display:flex;flex-direction:column;gap:6px;margin-bottom:28px;max-width:70ch}
+.eyebrow{font:500 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font:700 clamp(28px,4.4vw,42px)/1.08 var(--display);margin:0;text-wrap:balance;color:var(--fg)}
+header.top p{margin:4px 0 0;color:var(--muted)}
+.grid{display:grid;grid-template-columns:372px minmax(0,1fr);gap:40px;align-items:start}
+@media(max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{position:sticky;top:max(16px,env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:12px;align-items:center}
+@media(max-width:900px){.stage{position:static}}
+.seg{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px;width:100%;max-width:340px}
+.seg button{flex:1;border:0;background:transparent;color:var(--muted);font:500 13px var(--body);padding:7px 8px;border-radius:7px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--navy);color:#fff}
+.seglabel{font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);align-self:flex-start;max-width:340px;width:100%;margin:0 auto}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* phone */
+.phone{width:340px;max-width:100%;height:640px;background:var(--wa-bg);border-radius:34px;border:8px solid #1b2a3a;overflow:hidden;display:flex;flex-direction:column;position:relative;color:var(--wa-fg);font-size:13px}
+.statusbar{display:flex;justify-content:space-between;padding:8px 18px 2px;font:600 11px var(--body);color:var(--wa-fg)}
+.bar{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#1f2c34}
+.dot{width:30px;height:30px;border-radius:50%;background:var(--navy);display:grid;place-items:center}
+.dot svg{width:20px}
+.bar b{font-size:14px}.bar small{display:block;color:var(--wa-mute);font-size:11px;line-height:1.2}
+.chat{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--wa-bg)}
+.msg{max-width:84%;padding:7px 10px;border-radius:9px;background:var(--wa-in);align-self:flex-start;line-height:1.5}
+.msg.out{background:var(--wa-out);align-self:flex-end}
+.msg .btn{display:block;margin:8px -10px -7px;padding:9px;border-top:1px solid #ffffff1a;text-align:center;color:#53bdeb;font-weight:600;background:transparent;border-left:0;border-right:0;border-bottom:0;width:calc(100% + 20px);cursor:pointer;font-family:var(--ur);font-size:14px}
+.ur{font-family:var(--ur);direction:rtl;text-align:right;line-height:2.1}
+.file{display:flex;gap:10px;align-items:center}
+.file i{width:34px;height:40px;background:#e5eaee;border-radius:4px;display:grid;place-items:center;color:#c0392b;font:700 9px var(--mono);font-style:normal}
+.file span{font-size:12px;word-break:break-word}
+.paper{background:#fff;color:#111;border-radius:6px;padding:8px;margin-top:6px;font:500 8.5px/1.35 var(--body)}
+.paper h4{margin:0 0 4px;text-align:center;font:700 11px var(--body);text-decoration:underline}
+.paper .row{display:flex;justify-content:space-between;border:1px solid #111;padding:2px 4px}
+.paper .ln{height:7px;border-bottom:1px solid #999;margin-top:5px}
+.flow{flex:1;display:flex;flex-direction:column;background:var(--flow-bg);min-height:0}
+.fhead{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-weight:600}
+.fhead button{background:none;border:0;color:var(--wa-fg);font-size:18px;cursor:pointer;padding:0 4px}
+.prog{height:3px;background:#2a3942;margin:0 14px}.prog div{height:100%;background:var(--wa-green);transition:width .25s}
+.fbody{flex:1;overflow:auto;padding:16px 14px;display:flex;flex-direction:column;gap:10px}
+.fbody h3{margin:0;font:600 19px var(--body)}
+.fbody .sub{color:var(--wa-mute);font-size:12px;margin:-4px 0 4px}
+.opt{display:flex;gap:10px;align-items:flex-start;background:var(--flow-card);border:1px solid transparent;border-radius:10px;padding:11px 12px;cursor:pointer;color:var(--wa-fg);text-align:left;font:inherit;width:100%}
+.opt[aria-checked="true"]{border-color:var(--wa-green)}
+.opt .mark{flex:none;width:18px;height:18px;border-radius:50%;border:2px solid #5d6e78;margin-top:2px}
+.opt.multi .mark{border-radius:4px}
+.opt[aria-checked="true"] .mark{background:var(--wa-green);border-color:var(--wa-green)}
+.opt .t{display:block;font-weight:600}.opt .d{display:block;color:var(--wa-mute);font-size:12px;margin-top:2px}
+.opt .d.ur{font-size:13px}
+.num{display:flex;justify-content:space-between;align-items:center;background:var(--flow-card);border-radius:10px;padding:10px 12px;gap:10px}
+.num input{width:70px;background:#0b141a;border:1px solid #2f424d;color:var(--wa-fg);border-radius:8px;padding:6px;font:inherit;text-align:center}
+.sum{background:var(--flow-card);border-radius:10px;padding:11px 12px;font-size:12.5px;color:var(--wa-fg);display:flex;flex-direction:column;gap:3px}
+.sum b{color:var(--wa-mute);font-weight:500;margin-right:6px}
+.tag{align-self:flex-start;font:500 10px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:5px;background:#e8553f26;color:#ff9a89}
+.ffoot{padding:12px 14px 14px}
+.go{width:100%;border:0;border-radius:22px;background:var(--wa-green);color:#06210f;font:700 14px var(--body);padding:11px;cursor:pointer}
+.go[disabled]{background:#2a3942;color:#6b7c85;cursor:not-allowed}
+.reset{border:1px solid var(--line);background:var(--panel);color:var(--fg);font:500 13px var(--body);padding:7px 14px;border-radius:8px;cursor:pointer}
+/* spec */
+.spec{display:flex;flex-direction:column;gap:36px;min-width:0}
+.spec section{display:flex;flex-direction:column;gap:12px;min-width:0}
+h2{font:700 24px/1.15 var(--display);margin:0;text-wrap:balance}
+h3.s{font:600 15px var(--body);margin:6px 0 0}
+.spec p{margin:0;max-width:68ch}
+.muted{color:var(--muted)}
+.rules{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.rules li{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;max-width:72ch}
+.rules b{display:block;margin-bottom:2px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:14px}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+.chip{display:inline-block;font:500 11px var(--mono);padding:1px 7px;border-radius:5px;border:1px solid var(--line);color:var(--muted)}
+.chip.y{border-color:var(--ok);color:var(--ok)}.chip.n{border-color:var(--warn);color:var(--warn)}
+ol.steps{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:8px;max-width:72ch}
+.warn{background:var(--warn-bg);border:1px solid var(--warn);border-radius:10px;padding:12px 14px;max-width:72ch}
+.warn ul{margin:6px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.codebox{position:relative;min-width:0}
+pre{margin:0;background:var(--code-bg);color:var(--code-fg);border-radius:10px;padding:16px;overflow:auto;max-height:420px;font:400 12.5px/1.55 var(--mono)}
+.copy{position:absolute;top:8px;right:8px;background:var(--accent);color:var(--accent-fg);border:0;border-radius:7px;font:600 12px var(--body);padding:6px 11px;cursor:pointer}
+.flowmap{display:grid;gap:8px;font:500 13px var(--mono)}
+.lane{display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.lane .k{flex:0 0 100%;font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.lane span.s{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 8px}
+.lane span.s.new{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.lane i{color:var(--muted);font-style:normal}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style><style>@page{size:A4;margin:12mm}@media print{.stage{position:static!important}.grid{grid-template-columns:1fr!important}.seg,.reset{display:none}.seglabel{display:none}.phone{margin:0 auto}tr,.rules li,.lane{break-inside:avoid}pre{max-height:none!important;overflow:visible!important;white-space:pre-wrap;word-break:break-word}.copy{display:none}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style>
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">/assessment · Moawin</div>
+  <h1>QAT and PECTA assessment flow</h1>
+  <p>Moawin teachers pick a test type first. PECTA runs the flow they have today. QAT lets them browse to a ready-made Quality Assurance Test paper by grade and subject. Try it on the left, then hand the spec on the right to the bot.</p>
+</header>
+
+<div class="grid">
+  <div class="stage">
+    <div class="seglabel">Teacher programme</div>
+    <div class="seg" role="group" aria-label="Teacher programme">
+      <button id="p-moawin" aria-pressed="true">Moawin</button>
+      <button id="p-rwp" aria-pressed="false">Rawalpindi</button>
+    </div>
+    <div class="phone" id="phone" aria-live="polite"></div>
+    <button class="reset" id="reset">Start over</button>
+  </div>
+
+  <div class="spec">
+    <section>
+      <h2>What changes</h2>
+      <ul class="rules">
+        <li><b>One new question, asked first, only for Moawin.</b>When a Moawin teacher sends /assessment and taps start, the first screen asks which kind of test they want. Rawalpindi teachers never see it and go straight to Grade, as they do now.</li>
+        <li><b>PECTA keeps the current flow exactly.</b>Grade, Subject, Chapters, where questions come from, how many and total marks, kinds of question, Ready, then a generated PDF. No edits to those screens.</li>
+        <li><b>QAT is a browse-and-make flow.</b>Grade, Subject, Units, Ready. There are no question-count or question-type screens because every QAT paper has the same fixed shape. The bot writes a new paper in that shape and sends it as a PDF.</li><li><b>The curriculum does not change.</b>QAT questions come from the same Punjab textbooks the bot already uses for PECTA. Only the shape of the paper is different. The next section gives that shape, so the bot needs no other file.</li>
+        <li><b>Same look as the existing flow.</b>Same WhatsApp Flow shell, green progress bar, "New assessment" header, radio rows and Continue button.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Flow map</h2>
+      <div class="flowmap">
+        <div class="lane"><div class="k">Moawin teacher, PECTA</div>
+          <span class="s new">Test type</span><i>→</i><span class="s">Grade</span><i>→</i><span class="s">Subject</span><i>→</i><span class="s">Chapters</span><i>→</i><span class="s">Question source</span><i>→</i><span class="s">Count + marks</span><i>→</i><span class="s">Question kinds</span><i>→</i><span class="s">Ready</span><i>→</i><span class="s">PDF</span></div>
+        <div class="lane"><div class="k">Moawin teacher, QAT</div>
+          <span class="s new">Test type</span><i>→</i><span class="s new">Grade 2–5</span><i>→</i><span class="s new">Subject</span><i>→</i><span class="s new">Units</span><i>→</i><span class="s new">Ready</span><i>→</i><span class="s new">Paper PDF</span></div>
+        <div class="lane"><div class="k">Rawalpindi teacher</div>
+          <span class="s">Grade</span><i>→</i><span class="s">Subject</span><i>→</i><span class="s">…unchanged…</span><i>→</i><span class="s">PDF</span></div>
+      </div>
+      <p class="muted">Orange boxes are new screens.</p>
+    </section>
+
+    <section>
+      <h2>How QAT questions are made</h2>
+      <ul class="rules">
+        <li><b>Same books, new format.</b>QAT stands for Quality Assurance Test, the annual test PEF runs in its partner schools. It tests the same Punjab textbook content as everything else, so the bot loads nothing new. PEF's content book is week-by-week by learning outcome, and a QAT covers the month before the test. The teacher picks those units on the Units screen, and every question must be answerable from the chosen units only.</li>
+        <li><b>Every QAT paper has the same frame.</b>25 marks, 30 minutes, three sections, each section banner showing its marks. The top box holds Roll No, Name, Gender tick, Time, Total Marks and Syllabus. Each question shows its marks as (marks per item × items = total), for example (1 × 13 = 13). Written questions get ruled lines or boxes. MCQs have four bubbled options A to D with one correct answer.</li>
+        <li><b>Language.</b>Maths and English print each instruction and question in English with the Urdu line underneath. The Urdu paper is entirely in Urdu.</li>
+        <li><b>Fresh every time.</b>Each request writes new questions on the same outcomes, so a teacher who asks again gets a different paper of the same shape.</li>
+      </ul>
+      <p>Each row below is the blueprint for one grade and subject: what each of the three sections contains and what it is worth.</p>
+      <div class="tablewrap"><table id="bp"></table></div>
+    </section>
+
+    <section>
+      <h2>What questions the bot makes from the content</h2>
+      <ul class="rules">
+        <li><b>One question tests one learning outcome.</b>Every unit in the textbook lists what students should be able to do: identify, read, write, count, compare, arrange, decompose, solve. The bot takes the outcomes of the units the teacher chose and writes a question for each. All exercises and examples in those textbook units are fair material, and nothing outside them is asked.</li>
+        <li><b>The outcome's verb sets the kind of question.</b>"Arrange numbers in ascending and descending order" becomes an arrange-in-order question. "Identify the place value of a digit" becomes an underlined-digit question. The tables below map content to question for each subject.</li>
+        <li><b>Easy to harder across the paper.</b>Section I recalls and recognises. Section II applies in short answers. Section III extends: a word problem, a paragraph, a letter.</li>
+        <li><b>Quality rules.</b>Spread questions across the chosen units. Use the textbook's own words, number ranges and examples, never harder ones. Each MCQ has one clear answer and three believable wrong options. Every request writes fresh questions on the same outcomes. The answer key comes from the same outcome the question tests.</li>
+      </ul>
+      <div id="qm" style="display:flex;flex-direction:column;gap:12px"></div>
+    </section>
+
+    <section>
+      <h2>Screen copy</h2>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Screen</th><th>Urdu</th><th>English</th></tr></thead>
+        <tbody>
+          <tr><td>Test type, title</td><td class="ur">ٹیسٹ کی قسم</td><td>Test type</td></tr>
+          <tr><td>Test type, question</td><td class="ur">پہلے انتخاب کریں: آپ کس قسم کا ٹیسٹ چاہتے ہیں؟</td><td>First choose which type of test you want.</td></tr>
+          <tr><td>QAT option</td><td class="ur">QAT — تیار شدہ پرچہ، کلاس اور مضمون کے مطابق</td><td>QAT, a ready-made paper by class and subject</td></tr>
+          <tr><td>PECTA option</td><td class="ur">PECTA — اپنی مرضی کا پرچہ بنائیں</td><td>PECTA, build your own paper</td></tr>
+          <tr><td>QAT, Units screen</td><td class="ur">کن اکائیوں کا ٹیسٹ چاہیے؟</td><td>Which units is the test on?</td></tr>
+          <tr><td>QAT, final button</td><td class="ur">پرچہ بھیجیں</td><td>Send my paper</td></tr>
+        </tbody></table></div>
+      <p class="muted">Urdu lines are first drafts. Run them through rumi-voice before shipping.</p>
+    </section>
+
+    <section>
+      <h2>Build steps for the bot</h2>
+      <ol class="steps">
+        <li><b>Add the Test type screen</b> as the first screen of the /assessment Flow, shown only to Moawin teachers. Use whatever field the bot already uses to tell Moawin teachers apart.</li>
+        <li><b>Route PECTA</b> to the existing Grade screen with no other change.</li>
+        <li><b>Add the QAT branch:</b> Grade, Subject (only the subjects listed for that grade), Units (pick one or more units from the book's chapter list), Ready (with an optional answer key).</li>
+        <li><b>Generate the paper</b> from the blueprint for that grade and subject, using only the chosen units from the Punjab textbooks. Follow the frame and section rules exactly.</li>
+        <li><b>Send the PDF</b> named like <code>QAT_Class4_Maths.pdf</code>. If the answer key was ticked, add it as a second page set marked "Answer key".</li>
+        <li><b>Log the choice</b> (QAT or PECTA) on the assessment event.</li>
+        <li><b>Test:</b> a Moawin teacher sees the new screen and both paths work end to end for every grade and subject listed; a Rawalpindi teacher sees no change.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Everything for the bot</h2>
+      <p class="muted">One block. Paste it into the bot's chat. It holds the flow, the curriculum rule, the paper blueprint and the Urdu copy, so the bot does not need to open any other file.</p>
+      <div class="codebox"><pre id="prompt" tabindex="0"></pre><button class="copy" data-target="prompt">Copy everything</button></div>
+    </section>
+  </div>
+</div>
+</div>
+
+<script>
+(function(){
+var CATALOG={
+  1:[["maths","Maths",""],["english","English",""],["urdu","Urdu",""]],
+  2:[["maths","Maths",""],["english","English",""],["urdu","Urdu",""]],
+  3:[["maths","Maths",""],["english","English",""],["urdu","Urdu",""]],
+  4:[["maths","Maths",""],["english","English",""],["urdu","Urdu",""]],
+  5:[["maths","Maths",""],["english","English",""],["urdu","Urdu",""]]
+};
+var FLAGS={2:1,3:1};
+var CHAPTERS=["1 · Whole Numbers (pages 1–42)","2 · Number Operations (pages 43–74)","3 · Measurement (pages 75–86)","4 · Money (pages 87–100)","5 · Time (pages 101–113)","6 · Geometry, Shapes, Position (pages 114–128)"];
+var KINDS=["MCQs","Fill in the Blanks","True/False","Match the Column","Mental Math (Viva)","Short Questions","Word Problems"];
+var st;
+function reset(){st={prog:st?st.prog:"moawin",view:"chat",path:null,i:0,sel:{}};}
+function steps(){
+  var s=[];
+  if(st.prog==="moawin") s.push("type");
+  if(st.path==="QAT"){s.push("qgrade","qsubject","qtest","qready");}
+  else if(st.path==="PECTA"||st.prog==="rwp"){s.push("grade","subject","chapters","source","counts","kinds","ready");}
+  return s;
+}
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function opt(id,val,t,d,multi,ur){
+  var on=multi?(st.sel[id]||[]).indexOf(val)>-1:st.sel[id]===val;
+  return '<button class="opt'+(multi?' multi':'')+'" role="'+(multi?'checkbox':'radio')+'" aria-checked="'+on+'" data-id="'+id+'" data-v="'+esc(val)+'" data-multi="'+(multi?1:0)+'"><span class="mark"></span><span><span class="t">'+esc(t)+'</span>'+(d?'<span class="d'+(ur?' ur':'')+'">'+esc(d)+'</span>':'')+'</span></button>';
+}
+function screen(k){
+  var h="",title="",sub="",ok=false,cta="Continue",g=st.sel.qgrade||st.sel.grade;
+  if(k==="type"){title="Test type";h='<h3 class="ur" style="text-align:right">ٹیسٹ کی قسم</h3><div class="sub ur">پہلے انتخاب کریں: آپ کس قسم کا ٹیسٹ چاہتے ہیں؟</div><span class="tag">new</span>'+
+    opt("type","QAT","QAT","تیار شدہ پرچہ، کلاس اور مضمون کے مطابق",0,1)+opt("type","PECTA","PECTA","اپنی مرضی کا پرچہ بنائیں",0,1);ok=!!st.sel.type;}
+  if(k==="grade"){title="New assessment";h="<h3>Which class is this for?</h3>"+[1,2,3,4,5].map(function(n){return opt("grade",String(n),"Grade "+n)}).join("");ok=!!st.sel.grade;}
+  if(k==="subject"){title="New assessment";h="<h3>Grade "+g+"</h3><div class='sub'>Choose a subject.</div>"+["Maths","English","Urdu"].map(function(n){return opt("subject",n,n)}).join("");ok=!!st.sel.subject;}
+  if(k==="chapters"){title="New assessment";h="<h3>Chapters (optional)</h3><div class='sub'>Example list. Choose up to 6 options.</div>"+CHAPTERS.map(function(n,i){return opt("chapters",String(i),n,"",1)}).join("");ok=true;}
+  if(k==="source"){title="New assessment";h="<h3>What kind of questions?</h3><div class='sub'>Where questions come from</div>"+[["book","From the book"],["new","New questions on the same topics"],["mix","A mix of both"]].map(function(a){return opt("source",a[0],a[1])}).join("");ok=!!st.sel.source;}
+  if(k==="counts"){title="New assessment";h='<h3>How many?</h3><div class="num"><span>How many questions</span><input id="nq" type="number" min="1" max="25" value="'+(st.sel.nq||10)+'"></div><div class="num"><span>Total marks (optional)</span><input id="tm" type="number" min="1" max="500" value="'+(st.sel.tm||10)+'"></div>';ok=true;}
+  if(k==="kinds"){title="New assessment";h="<h3>Which kinds of question?</h3>"+KINDS.map(function(n){return opt("kinds",n,n,"",1)}).join("");ok=(st.sel.kinds||[]).length>0;}
+  if(k==="ready"){title="New assessment";cta="Make my paper";ok=true;h='<h3>Ready?</h3><div class="sum"><div><b>Class</b>Grade '+g+'</div><div><b>Subject</b>'+esc(st.sel.subject||"")+'</div><div><b>Questions</b>'+(st.sel.nq||10)+'</div><div><b>File</b>PDF</div></div>';}
+  if(k==="qgrade"){title="QAT";h="<h3>Which class is this for?</h3><div class='sub'>QAT papers are available for Grades 1 to 5.</div>"+[1,2,3,4,5].map(function(n){return opt("qgrade",String(n),"Grade "+n)}).join("");ok=!!st.sel.qgrade;}
+  if(k==="qsubject"){title="QAT";h="<h3>Grade "+st.sel.qgrade+"</h3><div class='sub'>Choose a subject.</div>"+CATALOG[st.sel.qgrade].map(function(r){return opt("qsubject",r[0],r[1])}).join("");ok=!!st.sel.qsubject;}
+  if(k==="qtest"){var r=cat();title="QAT";h="<h3>Which units?</h3><div class='sub'>Grade "+st.sel.qgrade+" · "+esc(r[1])+". Example list.</div>"+CHAPTERS.map(function(n,i){return opt("qunits",String(i),n,"",1)}).join("");ok=(st.sel.qunits||[]).length>0;}
+  if(k==="qready"){var q=cat();title="QAT";cta="Send my paper";ok=true;h='<h3>Ready?</h3><div class="sum"><div><b>Test</b>QAT</div><div><b>Class</b>Grade '+st.sel.qgrade+'</div><div><b>Subject</b>'+esc(q[1])+'</div><div><b>Units</b>'+(st.sel.qunits||[]).length+' selected</div><div><b>Marks</b>25 · 30 minutes</div><div><b>File</b>PDF</div></div>'+opt("qkey","key","Include answer key","",1);}
+  return{title:title,h:h,ok:ok,cta:cta};
+}
+function cat(){return CATALOG[st.sel.qgrade].filter(function(r){return r[0]===st.sel.qsubject})[0]||["","",""];}
+var LOGO='<svg viewBox="0 0 40 24" fill="none"><circle cx="8" cy="5" r="3" fill="#fff"/><circle cx="32" cy="5" r="3" fill="#fff"/><path d="M6 12c3 9 25 9 28 0" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>';
+function bar(){return '<div class="statusbar"><span>4:42</span><span>●●● 5G</span></div><div class="bar"><span class="dot">'+LOGO+'</span><div><b>Rumi</b><small>Taleemabad · Rumi Teaching Assistant</small></div></div>';}
+function render(){
+  var p=document.getElementById("phone"),h=bar();
+  if(st.view==="chat"){
+    h+='<div class="chat"><div class="msg out">/assessment</div><div class="msg ur">پرچہ بنائیں۔ کلاس اور مضمون چنیں، میں آپ کے لیے پرچہ تیار کر دوں گا۔<button class="btn" id="start">شروع کریں</button></div></div>';
+  }else if(st.view==="flow"){
+    var list=steps(),k=list[st.i],sc=screen(k),total=st.path||st.prog==="rwp"?list.length:list.length+4;
+    h+='<div class="flow"><div class="fhead"><button id="back" aria-label="Back">‹</button><span>'+esc(sc.title)+'</span><span></span></div><div class="prog"><div style="width:'+Math.round((st.i+1)/total*100)+'%"></div></div><div class="fbody">'+sc.h+'</div><div class="ffoot"><button class="go" id="next"'+(sc.ok?"":" disabled")+'>'+sc.cta+'</button></div></div>';
+  }else{
+    var qat=st.path==="QAT",name=qat?"QAT_Class"+st.sel.qgrade+"_"+cat()[1].replace(/ /g,"")+".pdf":"Grade"+st.sel.grade+"_"+(st.sel.subject||"Maths")+"_Paper.pdf";
+    var sub=qat?cat()[1].toUpperCase():(st.sel.subject||"Maths").toUpperCase();
+    h+='<div class="chat"><div class="msg out">/assessment</div><div class="msg"><div class="file"><i>PDF</i><span>'+esc(name)+'</span></div><div class="paper"><h4>'+esc(sub)+'</h4><div class="row"><span>Roll No: ____</span>'+(qat?'<span>Time: 30 Minutes</span><span>Total Marks: 25</span>':'<span>Total Marks: '+(st.sel.tm||10)+'</span>')+'</div><div class="row"><span>'+(qat?'QAT':'Assessment')+'</span><span>Syllabus: '+(qat?(st.sel.qunits||[]).length+' unit(s)':'Selected chapters')+'</span></div><div class="ln"></div><div class="ln"></div><div class="ln"></div></div></div><div class="msg ur">'+(qat?'یہ رہا آپ کا QAT پرچہ۔':'یہ رہا آپ کا پرچہ۔')+'</div></div>';
+  }
+  p.innerHTML=h;
+  var el;
+  if(el=p.querySelector("#start"))el.onclick=function(){st.view="flow";st.i=0;render();};
+  if(el=p.querySelector("#back"))el.onclick=function(){if(st.i>0){st.i--;}else{st.view="chat";}render();};
+  p.querySelectorAll(".opt").forEach(function(b){b.onclick=function(){
+    var id=b.dataset.id,v=b.dataset.v;
+    if(b.dataset.multi==="1"){var a=st.sel[id]||[],ix=a.indexOf(v);if(ix>-1)a.splice(ix,1);else a.push(v);st.sel[id]=a;}
+    else{st.sel[id]=v;if(id==="type")st.path=v;if(id==="qgrade"){delete st.sel.qsubject;delete st.sel.qtest;}if(id==="qsubject")delete st.sel.qtest;}
+    var y=p.querySelector(".fbody").scrollTop;render();p.querySelector(".fbody").scrollTop=y;};});
+  p.querySelectorAll(".num input").forEach(function(i){i.oninput=function(){st.sel[i.id]=i.value;};});
+  if(el=p.querySelector("#next"))el.onclick=function(){var list=steps();if(st.i<list.length-1){st.i++;}else{st.view="done";}render();};
+}
+function setProg(v){st.prog=v;var a=st;reset();st.prog=v;
+  document.getElementById("p-moawin").setAttribute("aria-pressed",v==="moawin");
+  document.getElementById("p-rwp").setAttribute("aria-pressed",v==="rwp");render();}
+document.getElementById("p-moawin").onclick=function(){setProg("moawin")};
+document.getElementById("p-rwp").onclick=function(){setProg("rwp")};
+document.getElementById("reset").onclick=function(){var v=st.prog;setProg(v)};
+reset();render();
+
+var COMMON={
+  total_marks:25,time_minutes:30,sections:3,
+  header_box:["Roll No","Name","Gender (tick Male or Female)","Time","Total Marks","Syllabus"],
+  marks_notation:"every question shows (marks per item x items = total), e.g. (1 x 13 = 13)",
+  section_banner:"each section opens with a banner and its marks, e.g. SECTION - I   13 Marks",
+  mcq:"four options (A) (B) (C) (D) as bubbles, exactly one correct, option text bilingual where the subject is bilingual",
+  written_answers:"ruled lines or boxes under every written question",
+  language:"Maths and English: each instruction and question in English with the Urdu line beneath. Urdu: fully Urdu.",
+  fresh_each_time:"each request writes new questions on the same outcomes with the same blueprint and difficulty"};
+var BP=[
+ {g:"1",s:"Maths",c:0,sec:[[10,"Match numbers to counted objects (3 x 1). Write numbers in numerals and words (4 x 1). Encircle the smaller or greater of two numbers (3 x 1)."],[8,"Arrange numbers in ascending order (2 x 2) and in descending order (2 x 2)."],[7,"Write the number before, after or between (4 x 1). Write tens and ones of a 2-digit number (3 x 1)."]]},
+ {g:"1",s:"English",c:0,sec:[[8,"(a) Fill the missing letters of the alphabet (4). (b) Match pictures to their first sound (4)."],[8,"(a) Read and write three-letter words (4). (b) Match capital and small letters (4)."],[9,"(a) Look at the picture and write the word (4). (b) Write five words from given letters or a dictated list (5)."]]},
+ {g:"1",s:"Urdu",c:0,sec:[[8,"Recognise letters: match letter to picture, circle the letter named (objective items)."],[8,"Fill the missing letter, join letters to make a word."],[9,"Write words from pictures and one short sentence."]]},
+ {g:"2",s:"Maths",c:1,sec:[[10,"Write the number from place-value parts (3 x 1, one worked example shown). Numerals in words (4 x 1). Encircle the smallest of three numbers (3 x 1)."],[8,"Arrange five numbers in descending order (2 x 2) and in ascending order (2 x 2)."],[7,"Write the place value of an underlined digit (4 x 1). Encircle the greater number (3 x 1)."]]},
+ {g:"3",s:"Maths",c:0,sec:[[10,"Roman numerals and numbers written in words, short items worth 0.5 to 1 mark each."],[8,"Ascending and descending order (2 x 2), plus counting objects and writing Roman numerals."],[7,"Write numerals from words (4 x 1). Place numbers on a number line (3)."]]},
+ {g:"4, 5",s:"Maths",c:1,sec:[[13,"13 MCQs, 1 mark each: place value, reading numbers, patterns, the four operations, small word items."],[8,"Five short questions, answer any FOUR, 2 marks each: numbers in words, ascending order, add or subtract, standard form, pattern next terms."],[4,"One word problem, 4 marks, with working space."]]},
+ {g:"2",s:"English",c:1,sec:[[8,"(a) Fill missing letters (4). (b) Match pictures to their initial sound (4)."],[8,"(a) Circle words containing digraphs (4). (b) Fill blanks with he, she, it or they (4)."],[9,"(a) Naming words sorted into People, Places, Animals, Things (4). (b) Write five sentences using given words (5)."]]},
+ {g:"3",s:"English",c:0,sec:[[7,"Word-building: fill missing letters, underline common nouns, make words with consonant clusters."],[9,"Silent letters, syllables, opposites, alphabetical order."],[9,"Capital letters and punctuation, a short reading passage with questions, use any FOUR given words in sentences."]]},
+ {g:"4, 5",s:"English",c:1,sec:[[12,"12 MCQs, 1 mark each, many with pictures: collective nouns, articles, adjectives, countable nouns, rhymes, silent letters, syllables, plus a short passage with 2 MCQs."],[7,"(a) Use any FOUR of five given words in meaningful sentences (4). (b) Punctuate any THREE of four sentences and rewrite them (3)."],[6,"Write a paragraph or a story from a prompt, with an OR choice and a small mind-map to plan it."]]},
+ {g:"4, 5",s:"Urdu",c:1,sec:[[12,"12 MCQs, 1 mark each: word meanings, synonyms, lesson questions, and three questions on a given couplet."],[7,"Essay on a given topic, about 100 words, with a YA (or) choice of two topics."],[6,"Application or letter writing, with a YA (or) choice of two."]]},
+ {g:"2, 3",s:"Urdu",c:0,sec:[[0,"Section I: short objective items such as fill in the blanks, matching and word-making."],[0,"Section II: word and sentence work, e.g. crossword, picture-to-word, sentence making."],[0,"Section III: short writing from a picture or prompt. Marks across the three sections must total 25."]]}
+];
+var QM=[
+ {subject:"Maths",rows:[
+  ["Identify, recognise, read a number","MCQ or circle the named number; match numbers to objects (Grades 1-2)"],
+  ["Write numbers in numerals and words","Write the number in words and words in numerals; Roman numerals where the unit teaches them"],
+  ["Count, count forward or backward","Count the objects and write the number; next or missing term in a pattern"],
+  ["Compare and order","Encircle the smaller or greater; arrange in ascending or descending order"],
+  ["Place value, expanded form, decompose","Place value of an underlined digit; tens and ones; expanded or standard form"],
+  ["Before, after, between","Write the number that comes before, after or between"],
+  ["Add, subtract, multiply, divide","Solve: straight sums as MCQs and short answers, numbers inside the grade's range"],
+  ["Apply to a situation","One word problem in Section III using the unit's operation, with working space"]]},
+ {subject:"English",rows:[
+  ["Letter names and sounds (Grade 1-2)","Fill missing letters; match picture to first sound; match capital to small letter"],
+  ["Words from the unit's word list","Fill the missing letters; picture to word; sort words into columns (naming words)"],
+  ["Grammar taught in the unit","MCQs and fill-in-the-blank on nouns, articles, pronouns, adjectives, digraphs, syllables, silent letters"],
+  ["Punctuation and capitals","Punctuate the given sentences and rewrite them"],
+  ["Reading a passage from the lesson","Short passage with 2 MCQs on it (Grade 4-5 Section I)"],
+  ["Sentence making","Use any FOUR of the given words in meaningful sentences"],
+  ["Writing","A paragraph or story from a prompt, with an OR choice (Grade 4-5); five sentences (Grade 2)"]]},
+ {subject:"Urdu",rows:[
+  ["Letters and joining (Grade 1-2)","Match letter to picture; fill the missing letter; join letters into a word"],
+  ["Word meanings, synonyms, opposites","MCQs on words from the lesson"],
+  ["Lesson comprehension","MCQs and short answers from the prose lesson"],
+  ["Poetry","Three questions on a couplet from the poem (Grade 4-5)"],
+  ["Sentence making and word work","Make sentences from given words; crossword or picture to word (Grades 2-3)"],
+  ["Essay or composition","About 100 words on a topic linked to a lesson, with a YA (or) choice (Grade 4-5)"],
+  ["Letter or application","Application or letter in the taught format, with a YA (or) choice (Grade 4-5)"]]}
+];
+var SPEC={
+  feature:"assessment-test-type-selector",command:"/assessment",
+  applies_to:{programme:"Moawin",others:"unchanged, Rawalpindi never sees the new screen"},
+  new_first_screen:{id:"test_type",title_ur:"ٹیسٹ کی قسم",question_ur:"پہلے انتخاب کریں: آپ کس قسم کا ٹیسٹ چاہتے ہیں؟",
+    options:[{value:"QAT",label:"QAT",description_ur:"تیار شدہ پرچہ، کلاس اور مضمون کے مطابق"},{value:"PECTA",label:"PECTA",description_ur:"اپنی مرضی کا پرچہ بنائیں"}]},
+  curriculum:{rule:"Curriculum is unchanged. QAT questions come from the same Punjab textbooks the bot already uses for PECTA. Load nothing new.",
+    syllabus_window:"QAT (Quality Assurance Test, run annually by PEF) covers the month before the test. The teacher picks the units on the Units screen.",
+    constraint:"Every question must be answerable from the chosen units only."},
+  routes:{
+    PECTA:{goes_to:"existing /assessment flow starting at Grade",changes:"none"},
+    QAT:{screens:[
+      {id:"qat_grade",title:"Which class is this for?",options:[1,2,3,4,5]},
+      {id:"qat_subject",title:"Choose a subject",options:["Maths","English","Urdu"],note:"same three subjects for every grade for now; no Science"},
+      {id:"qat_units",title:"Which units is the test on?",title_ur:"کن اکائیوں کا ٹیسٹ چاہیے؟",fields:["units (multi-select from the same chapter list PECTA uses)"]},
+      {id:"qat_ready",title:"Ready?",summary:["test","class","subject","units","marks and time","file: PDF"],optional:"Include answer key",button:"Send my paper",button_ur:"پرچہ بھیجیں"}],
+    no_screens_for:"question count, total marks, question kinds: fixed by the blueprint",
+    on_submit:"generate the paper from the blueprint using only the chosen units, send as a WhatsApp PDF named QAT_Class{grade}_{Subject}.pdf; add an answer key if ticked"}
+  },
+  question_making:{
+    principle:"Each question tests one learning outcome (SLO) from the units the teacher chose. Every exercise and example in the textbook for those units is fair material. Nothing outside the chosen units is asked.",
+    section_ladder:"Section I recalls and recognises, Section II applies in short answers, Section III extends: a problem, a paragraph, a letter.",
+    quality_rules:["spread questions across the chosen units, do not cluster on one","use the textbook's own words, number ranges and examples, not harder ones","one clear correct answer per MCQ, three believable wrong options","every request writes fresh questions on the same outcomes","write the answer key from the same outcome the question tests"],
+    by_subject:QM
+  },
+  qat_blueprint:{common:COMMON,papers:BP.map(function(r){return{grade:r.g,subject:r.s,confidence:r.c?"read from sample papers":(r.g==="1"?"inferred, no sample paper seen":"check mark split"),section_I:{marks:r.sec[0][0],content:r.sec[0][1]},section_II:{marks:r.sec[1][0],content:r.sec[1][1]},section_III:{marks:r.sec[2][0],content:r.sec[2][1]}};}),
+    note:"Grade 5 English and Urdu follow the Grade 4 rows. Where marks show 0 the split is to be confirmed and the three sections must still total 25."},
+  logging:"record test_type (QAT or PECTA) on the assessment event",
+  acceptance:["Moawin teacher sees the Test type screen first","PECTA path is identical to today","QAT path produces a 25-mark, 30-minute, three-section PDF for every grade and subject listed","Questions come only from the chosen units","Rawalpindi teacher sees no change"]
+};
+var PROMPT=[
+"Build this change to the /assessment WhatsApp Flow. Everything you need is in this message; do not look for other files.",
+"",
+"1. For Moawin teachers only, add a new first screen asking the test type: QAT or PECTA (Urdu question in the spec). Rawalpindi teachers skip it and see no change.",
+"2. PECTA: continue into the existing flow at Grade, no other change.",
+"3. QAT: new branch in the same look as the existing flow: Grade, Subject, Units, Ready, then send the PDF. No question-count, marks or question-type screens.",
+"4. The curriculum does not change. Generate QAT questions from the same Punjab textbooks used for PECTA, only from the units the teacher chose.",
+"5. Build every QAT paper to the blueprint in the spec for that grade and subject: frame, three sections, marks, question kinds, language rule. Each request writes fresh questions.",
+"5b. Choose question kinds from the content using question_making in the spec: each question tests one learning outcome from the chosen units, and the outcome's verb (identify, write, compare, decompose and so on) decides the kind. QAT is for Maths, English and Urdu only, Grades 1 to 5. No Science.",
+"6. Log test_type on the assessment event.",
+"7. Test both paths end to end as a Moawin teacher, and confirm a Rawalpindi teacher is unaffected.",
+"",
+"SPEC:",
+JSON.stringify(SPEC,null,2)
+].join("\n");
+(function(){var h="<thead><tr><th>Grade</th><th>Subject</th><th>Section I</th><th>Section II</th><th>Section III</th></tr></thead><tbody>";
+  BP.forEach(function(r){h+="<tr><td>"+r.g+"</td><td>"+r.s+"</td>"+r.sec.map(function(x){return"<td>"+(x[0]?"<b>"+x[0]+" marks.</b> ":"")+x[1]+"</td>"}).join("")+"</tr>";});
+  document.getElementById("bp").innerHTML=h+"</tbody>";})();
+(function(){var h="";QM.forEach(function(g){h+='<h3 class="s">'+g.subject+'</h3><div class="tablewrap"><table><thead><tr><th>What the content says</th><th>Question the bot makes</th></tr></thead><tbody>'+g.rows.map(function(r){return"<tr><td>"+r[0]+"</td><td>"+r[1]+"</td></tr>"}).join("")+"</tbody></table></div>";});
+  document.getElementById("qm").innerHTML=h;})();
+document.getElementById("prompt").textContent=PROMPT;
+document.querySelectorAll(".copy").forEach(function(b){b.onclick=function(){
+  var pre=document.getElementById(b.dataset.target),t=pre.textContent,old=b.textContent;
+  function done(){b.textContent="Copied";setTimeout(function(){b.textContent=old},1500)}
+  function sel(){var r=document.createRange();r.selectNodeContents(pre);var s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent="Selected, press copy"}
+  try{navigator.clipboard.writeText(t).then(done,sel)}catch(e){sel()}};});
+})();
+</script>
+</html>
